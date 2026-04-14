@@ -1,0 +1,43 @@
+{#
+  partials/message_card.html
+  Reçoit (depuis le contexte de la boucle) : message, scenario, user_role
+#}
+<article class="message-card" id="msg-{{ message.id }}">
+
+  <div class="message-card-header">
+    <div class="message-avatar avatar-{{ message.role }}">
+      {{ 'CC' if message.role == 'officiel' else 'CI' }}
+    </div>
+    <div class="message-meta">
+      <div class="message-author">
+        {{ 'Cellule de crise' if message.role == 'officiel' else 'Citoyen' }}
+        <span class="badge badge-{{ message.role }}">
+          {{ 'Officiel' if message.role == 'officiel' else 'Population' }}
+        </span>
+      </div>
+      <div class="message-time">{{ message.fictive_time_str }}</div>
+    </div>
+  </div>
+
+  <div class="message-body">{{ message.content | e }}</div>
+
+  {% if message.photo_filename %}
+  <img class="message-photo"
+       src="{{ url_for('static', filename='photos/' + message.photo_filename) }}"
+       alt="Photo jointe au message"
+       loading="lazy">
+  {% endif %}
+
+  <div class="message-footer">
+    <button class="btn btn-sm btn-outline reply-btn"
+            hx-get="{{ url_for('htmx.comments_section', message_id=message.id) }}"
+            hx-target="#reply-panel"
+            hx-swap="innerHTML"
+            aria-label="Voir les réponses à ce message">
+      💬 Répondre
+      {% set count = message.comment_count %}
+      {% if count > 0 %}({{ count }}){% endif %}
+    </button>
+  </div>
+
+</article>

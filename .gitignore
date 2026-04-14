@@ -1,0 +1,53 @@
+# Environnements virtuels Python
+.venv/
+venv/
+env/
+
+# Bytecode Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Base de données SQLite (générée au runtime)
+instance/community.db
+
+# Clé secrète Flask (générée au premier démarrage)
+instance/secret.key
+
+# Certificats TLS (contiennent une clé privée — ne jamais committer)
+certs/
+
+# Fichiers de configuration locaux
+.env
+.env.*
+
+# IDE et éditeurs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Couverture de tests
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Distribution / packaging Python
+dist/
+build/
+*.egg-info/
+
+# -------------------------------------------------------
+# Explicitement INCLUS (ne pas exclure)
+# -------------------------------------------------------
+# HTMX est embarqué localement — requis pour fonctionnement hors ligne
+!app/static/js/htmx.min.js
+!app/static/js/
+!app/static/

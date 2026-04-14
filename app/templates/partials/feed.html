@@ -1,0 +1,26 @@
+{#
+  partials/feed.html
+  Fragment injecté par le polling HTMX toutes les 2s.
+  Reçoit : messages, active_session, user_role, scenario, fictive_time
+#}
+
+{# Données horloge lues par JavaScript après le swap #}
+<span id="current-fictive-time"
+      data-time="{{ fictive_time }}"
+      aria-hidden="true" style="display:none"></span>
+
+{% if messages %}
+  {% for message in messages %}
+    {% include 'partials/message_card.html' %}
+  {% endfor %}
+{% else %}
+  <div class="feed-empty">
+    <p>Aucun message pour l'instant.<br>
+    {% if active_session %}
+      Soyez le premier à publier !
+    {% else %}
+      La session n'est pas encore démarrée.
+    {% endif %}
+    </p>
+  </div>
+{% endif %}

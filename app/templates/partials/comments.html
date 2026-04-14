@@ -1,0 +1,66 @@
+{#
+  partials/comments.html
+  Fragment HTMX : réponses d'un message + formulaire d'ajout.
+  Reçoit : message, comments, form, user_role
+#}
+<div class="reply-panel-inner">
+
+  <div class="reply-panel-header">
+    <strong>Réponses au message</strong>
+    <button class="btn btn-sm btn-outline reply-close-btn"
+            onclick="document.getElementById('reply-panel').style.display='none'"
+            aria-label="Fermer le panneau de réponses">
+      ✕ Fermer
+    </button>
+  </div>
+
+  {# Message d'origine #}
+  <div class="reply-original">
+    <span class="badge badge-{{ message.role }}">
+      {{ 'Officiel' if message.role == 'officiel' else 'Population' }}
+    </span>
+    <span class="reply-original-time">{{ message.fictive_time_str }}</span>
+    <p class="reply-original-content">{{ message.content | e }}</p>
+  </div>
+
+  {# Liste des commentaires #}
+  {% if comments %}
+  <div class="comments-list">
+    {% for comment in comments %}
+    <div class="comment-item">
+      <div class="comment-bubble">
+        <div class="comment-author">
+          {{ 'Cellule de crise' if comment.role == 'officiel' else 'Citoyen' }}
+          <span class="badge badge-{{ comment.role }} badge-xs">
+            {{ 'Officiel' if comment.role == 'officiel' else 'Population' }}
+          </span>
+        </div>
+        <div class="comment-text">{{ comment.content | e }}</div>
+        <div class="comment-time">{{ comment.fictive_time_str }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-muted" style="padding: 8px 0;">Pas encore de réponse.</p>
+  {% endif %}
+
+  {# Formulaire d'ajout de réponse #}
+  {% if user_role in ('officiel', 'population') %}
+  <form class="reply-form"
+        hx-post="{{ url_for('htmx.post_comment', message_id=message.id) }}"
+        hx-target="#reply-panel"
+        hx-swap="innerHTML">
+    {{ form.hidden_tag() }}
+    <input type="text"
+           name="content"
+           class="reply-input"
+           placeholder="Votre réponse…"
+           autocomplete="off"
+           maxlength="300"
+           required>
+    <button type="submit" class="btn btn-sm btn-primary">Envoyer</button>
+  </form>
+  {% endif %}
+
+</div>

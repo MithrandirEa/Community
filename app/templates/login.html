@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}Community — Connexion{% endblock %}
+
+{% block content %}
+<div class="login-page">
+    <div class="login-card">
+
+        <div class="login-header">
+            <div class="login-logo">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="56" height="56" aria-hidden="true">
+                    <circle cx="24" cy="24" r="22" fill="#1877f2"/>
+                    <circle cx="24" cy="19" r="7" fill="#fff"/>
+                    <ellipse cx="24" cy="38" rx="13" ry="8" fill="#fff"/>
+                </svg>
+            </div>
+            <h1 class="login-app-name">Community</h1>
+            <p class="login-tagline">Simulation de réseau social — Gestion de crise</p>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-error" role="alert">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('auth.login') }}" novalidate>
+            {{ form.hidden_tag() }}
+
+            <div class="form-group">
+                <label for="code" class="form-label">Code d'accès</label>
+                <input
+                    type="text"
+                    id="code"
+                    name="code"
+                    class="form-input{% if form.code.errors %} input-error{% endif %}"
+                    placeholder="Ex : MAIRIE2026"
+                    autocomplete="off"
+                    autocapitalize="characters"
+                    spellcheck="false"
+                    autofocus
+                    value="{{ form.code.data or '' }}"
+                >
+                {% for err in form.code.errors %}
+                <span class="field-error">{{ err }}</span>
+                {% endfor %}
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">
+                Rejoindre
+            </button>
+        </form>
+
+        <p class="login-hint">Ce code vous est remis par votre animateur.</p>
+
+    </div>
+</div>
+{% endblock %}

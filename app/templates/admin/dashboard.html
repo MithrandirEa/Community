@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% block title %}Community — Administration{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+
+  <header class="app-header">
+    <span class="brand">Community</span>
+    <div class="fictive-clock">
+      <span class="clock-label">Heure fictive</span>
+      <span id="clock">{{ fictive_time }}</span>
+    </div>
+    <div class="header-actions">
+      <span class="badge badge-admin">Animateur</span>
+      <a href="{{ url_for('admin.photos') }}" class="btn btn-sm btn-outline">Photothèque</a>
+      <a href="{{ url_for('admin.config') }}" class="btn btn-sm btn-outline">Codes</a>
+      <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">Quitter</a>
+    </div>
+  </header>
+
+  <div class="admin-content" style="padding:24px;max-width:900px;margin:0 auto">
+
+    <!-- Messages flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'error' if category == 'error' else 'success' }}" role="alert">
+      {{ message }}
+    </div>
+    {% endfor %}
+    {% endwith %}
+
+    <!-- Statut de la session -->
+    <section class="admin-card mb-3">
+      <h2 class="admin-section-title">Session en cours</h2>
+
+      {% if active_session %}
+      <div class="session-status session-active">
+        <div class="session-info">
+          <span class="status-dot dot-active"></span>
+          <strong>Session active</strong>
+          <span class="text-muted">— démarrée à {{ active_session.real_started_at.strftime('%H:%M:%S') }} (réel)</span>
+        </div>
+        <div class="session-clock-big">
+          Heure fictive : <strong>{{ fictive_time }}</strong>
+          &nbsp;(début fictif : {{ active_session.fictive_start_str }})
+        </div>
+      </div>
+
+      <div class="session-actions mt-2 d-flex gap-2">
+        <form method="POST" action="{{ url_for('admin.session_stop') }}"
+              onsubmit="return confirm('Arrêter la session ?')">
+          {{ form.hidden_tag() }}
+          <button type="submit" class="btn btn-outline">⏹ Arrêter</button>
+        </form>
+        <form method="POST" action="{{ url_for('admin.session_reset') }}"
+              onsubmit="return confirm('Réinitialiser la session ? Tous les messages seront effacés (photos conservées).')">
+          {{ form.hidden_tag() }}
+          <button type="submit" class="btn btn-danger">🗑 Réinitialiser</button>
+        </form>
+      </div>
+
+      {% else %}
+      <div class="session-status session-inactive">
+        <span class="status-dot dot-inactive"></span>
+        <strong>Session inactive</strong>
+        {% if last_session and last_session.ended_at %}
+        <span class="text-muted">— dernière session terminée à {{ last_session.ended_at.strftime('%H:%M') }}</span>
+        {% endif %}
+      </div>
+
+      <!-- Formulaire de démarrage -->
+      <form method="POST" action="{{ url_for('admin.session_start') }}" class="session-start-form mt-3">
+        {{ form.hidden_tag() }}
+        <div class="form-group" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <label for="fictive_start_time" class="form-label" style="margin-bottom:0;white-space:nowrap">
+            Heure fictive de début :
+          </label>
+          {{ form.fictive_start_time(
+               id='fictive_start_time',
+               class='form-input',
+               style='width:100px;font-family:var(--font-mono)',
+               placeholder='HH:MM',
+               value=form.fictive_start_time.data or '09:00'
+          ) }}
+          {% for err in form.fictive_start_time.errors %}
+          <span class="field-error">{{ err }}</span>
+          {% endfor %}
+          <button type="submit" class="btn btn-primary">▶ Démarrer la session</button>
+        </div>
+      </form>
+
+      {% if last_session %}
+      <form method="POST" action="{{ url_for('admin.session_reset') }}" class="mt-2"
+            onsubmit="return confirm('Effacer tous les messages de la session précédente ?')">
+        {{ form.hidden_tag() }}
+        <button type="submit" class="btn btn-sm btn-outline btn-danger">🗑 Effacer la session précédente</button>
+      </form>
+      {% endif %}
+
+      {% endif %}
+    </section>
+
+    <!-- Scénario actif -->
+    <section class="admin-card mb-3">
+      <h2 class="admin-section-title">Photothèque</h2>
+      <p>
+        Scénario actif :
+        <strong>{{ scenario if scenario else '(aucun)' }}</strong>
+      </p>
+      <a href="{{ url_for('admin.photos') }}" class="btn btn-sm btn-outline mt-1">Gérer la photothèque →</a>
+    </section>
+
+    <!-- Feed live (admin surveille les deux groupes) -->
+    <section class="admin-card">
+      <h2 class="admin-section-title">Feed en direct</h2>
+      <div id="feed-container" class="feed-admin"
+           hx-get="{{ url_for('htmx.feed') }}"
+           hx-trigger="every 2s"
+           hx-swap="innerHTML">
+        <p class="text-muted text-center">Chargement du feed…</p>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<style>
+.admin-card {
+    background: var(--color-surface);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    padding: 20px 24px;
+}
+.session-status { display:flex; flex-direction:column; gap:6px; }
+.session-info { display:flex; align-items:center; gap:8px; }
+.session-clock-big { font-size:1.05rem; margin-top:4px; }
+.status-dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+.dot-active { background: var(--color-success); box-shadow: 0 0 0 3px #d1fae5; }
+.dot-inactive { background: var(--color-muted); }
+.session-actions form { display:inline; }
+.feed-admin { max-height: 420px; overflow-y: auto; }
+.feed-admin .message-card { margin-bottom: 8px; }
+</style>
+
+<script>
+(function () {
+    // Mettre à jour l'horloge depuis le feed polling
+    document.body.addEventListener('htmx:afterSwap', function (e) {
+        if (e.detail.target.id === 'feed-container') {
+            var dataEl = e.detail.target.querySelector('#current-fictive-time');
+            var clockEl = document.getElementById('clock');
+            if (dataEl && clockEl) clockEl.textContent = dataEl.dataset.time;
+        }
+    });
+}());
+</script>
+{% endblock %}

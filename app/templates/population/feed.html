@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}Community — Population{% endblock %}
+
+{% block content %}
+<div class="feed-page">
+
+  <!-- En-tête : marque, horloge fictive, badge de rôle, déconnexion -->
+  <header class="app-header">
+    <span class="brand">Community</span>
+    <div class="fictive-clock">
+      <span class="clock-label">Heure</span>
+      <span id="clock">{{ fictive_time }}</span>
+    </div>
+    <div class="header-actions">
+      <span class="badge badge-population">Citoyen</span>
+      <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">Quitter</a>
+    </div>
+  </header>
+
+  <!-- Panneau de réponses (hors conteneur de polling) -->
+  <div id="reply-panel" class="reply-panel-container" style="display:none" aria-live="polite"></div>
+
+  <!-- Feed (polling HTMX toutes les 2 secondes) -->
+  <main id="feed-container" class="feed-main"
+        hx-get="{{ url_for('htmx.feed') }}"
+        hx-trigger="every 2s"
+        hx-swap="innerHTML">
+    {% with user_role='population' %}
+      {% include 'partials/feed.html' %}
+    {% endwith %}
+  </main>
+
+  <!-- Zone de composition (sticky) -->
+  <section class="compose-section">
+
+    {% if error %}
+    <div class="alert alert-error" role="alert">{{ error }}</div>
+    {% endif %}
+
+    {% if active_session %}
+    <form class="compose-form" method="POST" action="{{ url_for('population.feed') }}">
+      {{ form.hidden_tag() }}
+
+      <div class="form-group" style="margin-bottom:8px">
+        <textarea name="content" id="compose-content"
+                  class="compose-textarea"
+                  placeholder="Exprimez-vous en tant que citoyen…"
+                  rows="2"
+                  maxlength="500"
+                  required>{{ form.content.data or '' }}</textarea>
+        {% for err in form.content.errors %}
+        <span class="field-error">{{ err }}</span>
+        {% endfor %}
+      </div>
+
+      <div class="compose-actions">
+        <span></span><!-- espaceur -->
+        <button type="submit" class="btn btn-primary" style="background:var(--color-population)">Publier</button>
+      </div>
+
+    </form>
+    {% else %}
+    <p class="text-muted text-center">En attente de démarrage de session par l'animateur.</p>
+    {% endif %}
+
+  </section>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // --- Horloge fictive : mise à jour depuis le fragment polling ---
+  document.body.addEventListener('htmx:afterSwap', function (e) {
+    if (e.detail.target.id === 'feed-container') {
+      var dataEl = e.detail.target.querySelector('#current-fictive-time');
+      var clockEl = document.getElementById('clock');
+      if (dataEl && clockEl) clockEl.textContent = dataEl.dataset.time;
+    }
+    if (e.detail.target.id === 'reply-panel') {
+      e.detail.target.style.display = 'block';
+      e.detail.target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  });
+
+  // --- Pause du polling quand une zone de texte est focusée ---
+  var feedEl = document.getElementById('feed-container');
+  var pausePoll = false;
+  document.addEventListener('focusin', function (e) {
+    if (e.target.matches('textarea, .reply-input')) pausePoll = true;
+  });
+  document.addEventListener('focusout', function (e) {
+    if (e.target.matches('textarea, .reply-input')) pausePoll = false;
+  });
+  document.body.addEventListener('htmx:beforeRequest', function (e) {
+    if (feedEl && e.detail.elt === feedEl && pausePoll) e.preventDefault();
+  });
+}());
+</script>
+{% endblock %}
