@@ -7,7 +7,7 @@
 ![Réseau](https://img.shields.io/badge/réseau-LAN%20Wi--Fi%20uniquement-orange)
 ![Licence](https://img.shields.io/badge/licence-MIT-green)
 
-> Application web pédagogique des **Petits Débrouillards** — simule un réseau social de gestion de crise en réseau local, sans internet.
+> Application web pédagogique — simule un réseau social de gestion de crise en réseau local, sans internet.
 
 ---
 
@@ -356,4 +356,4 @@ community/
 
 ## Licence
 
-MIT — Les Petits Débrouillards
+MIT
