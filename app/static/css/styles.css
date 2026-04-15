@@ -537,6 +537,19 @@ textarea.form-input {
     gap: 8px;
 }
 
+.compose-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.compose-sender-select {
+    width: auto;
+    min-width: 130px;
+    flex-shrink: 0;
+    align-self: stretch;
+}
+
 .compose-options {
     display: flex;
     gap: 8px;

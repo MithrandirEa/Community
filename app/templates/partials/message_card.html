@@ -18,7 +18,11 @@
     </div>
     <div class="message-meta">
       <div class="message-author">
+        {% if message.sender_name %}
+        <strong>{{ message.sender_name | e }}</strong>
+        {% else %}
         {{ 'Cellule de crise' if message.role == 'officiel' else 'Citoyen' }}
+        {% endif %}
         <span class="badge badge-{{ message.role }}">
           {{ 'Officiel' if message.role == 'officiel' else 'Population' }}
         </span>

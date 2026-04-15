@@ -73,6 +73,8 @@ class Message(db.Model):
     scheduled_for_minutes = db.Column(db.Integer, nullable=True)
     # False = en attente de publication (message programmé non encore déclenché)
     is_published = db.Column(db.Boolean, default=True, nullable=False)
+    # Nom fictif du personnage (depuis le NamePack de la session), None si sans identité
+    sender_name = db.Column(db.String(100), nullable=True)
 
     comments = db.relationship(
         'Comment', backref='message', lazy='dynamic', cascade='all, delete-orphan'

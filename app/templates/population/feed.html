@@ -42,7 +42,15 @@
     <form class="compose-form" method="POST" action="{{ url_for('population.feed') }}">
       {{ form.hidden_tag() }}
 
-      <div class="form-group" style="margin-bottom:8px">
+      <div class="form-group compose-row" style="margin-bottom:8px">
+        {% if sender_names %}
+        <select name="sender_name" class="form-input compose-sender-select" aria-label="Personnage">
+          <option value="">— Identité —</option>
+          {% for entry in sender_names %}
+          <option value="{{ entry.label }}" {% if form.sender_name.data == entry.label %}selected{% endif %}>{{ entry.label }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
         <textarea name="content" id="compose-content"
                   class="compose-textarea"
                   placeholder="Exprimez-vous en tant que citoyen…"
