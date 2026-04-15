@@ -89,6 +89,7 @@ def feed():
                 return redirect(url_for('officiel.feed'))
 
     messages = []
+    pending_messages = []
     fictive_time = '--:--'
     if active_session:
         fictive_time = active_session.get_fictive_time_str()
@@ -96,6 +97,12 @@ def feed():
             Message.query
             .filter_by(session_id=active_session.id, is_published=True)
             .order_by(Message.real_published_at.desc())
+            .all()
+        )
+        pending_messages = (
+            Message.query
+            .filter_by(session_id=active_session.id, is_published=False, is_scheduled=True)
+            .order_by(Message.scheduled_for_minutes.asc())
             .all()
         )
 
@@ -115,6 +122,7 @@ def feed():
         'officiel/feed.html',
         form=form,
         messages=messages,
+        pending_messages=pending_messages,
         active_session=active_session,
         fictive_time=fictive_time,
         error=error,
