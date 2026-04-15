@@ -13,6 +13,7 @@
     </div>
     <div class="header-actions">
       <span class="badge badge-admin">Animateur</span>
+      <a href="{{ url_for('admin.namepacks') }}" class="btn btn-sm btn-outline">Noms</a>
       <a href="{{ url_for('admin.photos') }}" class="btn btn-sm btn-outline">Photothèque</a>
       <a href="{{ url_for('admin.config') }}" class="btn btn-sm btn-outline">Codes</a>
       <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">Quitter</a>
@@ -86,6 +87,17 @@
           {% for err in form.fictive_start_time.errors %}
           <span class="field-error">{{ err }}</span>
           {% endfor %}
+          {% if name_packs %}
+          <label for="name_pack_id" class="form-label" style="margin-bottom:0;white-space:nowrap">
+            Pack de noms :
+          </label>
+          <select name="name_pack_id" id="name_pack_id" class="form-input" style="width:auto">
+            <option value="0">— aucun —</option>
+            {% for pack in name_packs %}
+            <option value="{{ pack.id }}">{{ pack.name }}</option>
+            {% endfor %}
+          </select>
+          {% endif %}
           <button type="submit" class="btn btn-primary">▶ Démarrer la session</button>
         </div>
       </form>

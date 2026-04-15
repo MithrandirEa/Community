@@ -18,6 +18,9 @@ class Session(db.Model):
     messages = db.relationship(
         'Message', backref='session', lazy='dynamic', cascade='all, delete-orphan'
     )
+    # Pack de noms fictifs associé à la session (optionnel)
+    name_pack_id = db.Column(db.Integer, db.ForeignKey('name_pack.id'), nullable=True)
+    name_pack = db.relationship('NamePack', foreign_keys=[name_pack_id])
 
     # --- Helpers horloge fictive ---
 
@@ -138,3 +141,25 @@ class Config(db.Model):
 
     key = db.Column(db.String(50), primary_key=True)
     value = db.Column(db.Text, nullable=False)
+
+
+class NamePack(db.Model):
+    """Pack de noms fictifs défini par l'animateur."""
+    __tablename__ = 'name_pack'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    entries = db.relationship(
+        'NameEntry', backref='pack', lazy='dynamic', cascade='all, delete-orphan'
+    )
+
+
+class NameEntry(db.Model):
+    """Entrée d'un pack : nom fictif associé à un rôle."""
+    __tablename__ = 'name_entry'
+
+    id = db.Column(db.Integer, primary_key=True)
+    pack_id = db.Column(db.Integer, db.ForeignKey('name_pack.id'), nullable=False)
+    # 'officiel' | 'population'
+    role = db.Column(db.String(20), nullable=False)
+    label = db.Column(db.String(100), nullable=False)

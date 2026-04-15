@@ -11,7 +11,7 @@ from wtforms import StringField, SubmitField
 from wtforms.validators import DataRequired, Optional, Regexp
 
 from app import bcrypt, db
-from app.models import Comment, Config, Message, Photo
+from app.models import Comment, Config, Message, NameEntry, NamePack, Photo
 from app.models import Session as SimSession
 from app.utils.helpers import require_role
 
@@ -72,6 +72,30 @@ class CodeConfigForm(FlaskForm):
     submit = SubmitField('Enregistrer')
 
 
+class NamePackForm(FlaskForm):
+    name = StringField(
+        'Nom du pack',
+        validators=[
+            DataRequired(),
+            Regexp(r'^[\w\s\-]+$', message='Caractères alphanumériques, espaces et tirets uniquement.'),
+        ],
+    )
+    submit = SubmitField('Créer le pack')
+
+
+class NameEntryForm(FlaskForm):
+    role = StringField('Rôle', validators=[DataRequired()])
+    label = StringField(
+        'Nom fictif',
+        validators=[
+            DataRequired(),
+            Regexp(r'^[\w\s\-\.\,\'éèêëàâùûüôîïœçÉÈÊËÀÂÙÛÜÔÎÏŒÇ]+$',
+                   message='Caractères non autorisés.'),
+        ],
+    )
+    submit = SubmitField('Ajouter')
+
+
 # --- Dashboard ---
 
 @admin_bp.route('/')
@@ -83,6 +107,8 @@ def dashboard():
     cfg_scenario = db.session.get(Config, 'scenario_actif')
     scenario = cfg_scenario.value if cfg_scenario else ''
 
+    name_packs = NamePack.query.order_by(NamePack.name).all()
+
     form = SessionConfigForm()
     if active_session:
         form.fictive_start_time.data = active_session.fictive_start_str
@@ -93,6 +119,7 @@ def dashboard():
         last_session=last_session,
         scenario=scenario,
         form=form,
+        name_packs=name_packs,
         fictive_time=active_session.get_fictive_time_str() if active_session else '--:--',
     )
 
@@ -109,6 +136,10 @@ def session_start():
         h, m = raw.split(':')
         start_minutes = int(h) * 60 + int(m)
 
+        # Pack de noms (lu directement depuis request.form pour éviter les conflits WTForms)
+        pack_id_raw = request.form.get('name_pack_id', '').strip()
+        name_pack_id = int(pack_id_raw) if pack_id_raw and pack_id_raw != '0' else None
+
         # Désactiver toute session en cours
         for s in SimSession.query.filter_by(is_active=True).all():
             s.is_active = False
@@ -117,6 +148,7 @@ def session_start():
             fictive_start_minutes=start_minutes,
             real_started_at=datetime.now(timezone.utc).replace(tzinfo=None),
             is_active=True,
+            name_pack_id=name_pack_id,
         )
         db.session.add(new_session)
         db.session.commit()
@@ -302,4 +334,82 @@ def _upsert_config(key: str, value: str) -> None:
         cfg.value = value
     else:
         db.session.add(Config(key=key, value=value))
+
+
+# --- Gestion des packs de noms fictifs ---
+
+@admin_bp.route('/namepacks', methods=['GET', 'POST'])
+@require_role('admin')
+def namepacks():
+    """Liste et création de packs de noms."""
+    pack_form = NamePackForm(prefix='pack')
+    entry_form = NameEntryForm(prefix='entry')
+
+    if pack_form.validate_on_submit() and 'pack-submit' in request.form:
+        name = pack_form.name.data.strip()
+        existing = NamePack.query.filter_by(name=name).first()
+        if existing:
+            flash(f'Un pack nommé «{name}» existe déjà.', 'error')
+        else:
+            db.session.add(NamePack(name=name))
+            db.session.commit()
+            flash(f'Pack «{name}» créé.', 'success')
+        return redirect(url_for('admin.namepacks'))
+
+    packs = NamePack.query.order_by(NamePack.name).all()
+    return render_template(
+        'admin/namepacks.html',
+        packs=packs,
+        pack_form=pack_form,
+        entry_form=entry_form,
+    )
+
+
+@admin_bp.route('/namepacks/<int:pack_id>/delete', methods=['POST'])
+@require_role('admin')
+def namepack_delete(pack_id):
+    """Supprime un pack et toutes ses entrées."""
+    pack = db.get_or_404(NamePack, pack_id)
+    db.session.delete(pack)
+    db.session.commit()
+    flash(f'Pack «{pack.name}» supprimé.', 'success')
+    return redirect(url_for('admin.namepacks'))
+
+
+@admin_bp.route('/namepacks/<int:pack_id>/entries', methods=['POST'])
+@require_role('admin')
+def namepack_add_entry(pack_id):
+    """Ajoute un nom fictif à un pack."""
+    pack = db.get_or_404(NamePack, pack_id)
+    entry_form = NameEntryForm(prefix='entry')
+
+    role = request.form.get('entry-role', '').strip()
+    label = request.form.get('entry-label', '').strip()
+
+    if role not in ('officiel', 'population'):
+        flash('Rôle invalide.', 'error')
+        return redirect(url_for('admin.namepacks'))
+
+    if not label:
+        flash('Le nom fictif ne peut pas être vide.', 'error')
+        return redirect(url_for('admin.namepacks'))
+
+    db.session.add(NameEntry(pack_id=pack.id, role=role, label=label))
+    db.session.commit()
+    flash(f'Nom «{label}» ajouté au pack «{pack.name}».', 'success')
+    return redirect(url_for('admin.namepacks'))
+
+
+@admin_bp.route('/namepacks/<int:pack_id>/entries/<int:entry_id>/delete', methods=['POST'])
+@require_role('admin')
+def namepack_delete_entry(pack_id, entry_id):
+    """Supprime un nom fictif d'un pack."""
+    entry = db.get_or_404(NameEntry, entry_id)
+    if entry.pack_id != pack_id:
+        flash('Entrée introuvable dans ce pack.', 'error')
+        return redirect(url_for('admin.namepacks'))
+    db.session.delete(entry)
+    db.session.commit()
+    flash(f'Nom «{entry.label}» supprimé.', 'success')
+    return redirect(url_for('admin.namepacks'))
 
