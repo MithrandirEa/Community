@@ -34,8 +34,10 @@ def feed():
     """Fragment HTMX : liste de tous les messages publiés (polling toutes les 2s)."""
     active_session = SimSession.query.filter_by(is_active=True).first()
     messages = []
+    pending_messages = []
     scenario = ''
     fictive_time = '--:--'
+    user_role = flask_session.get('role')
 
     if active_session:
         fictive_time = active_session.get_fictive_time_str()
@@ -47,12 +49,21 @@ def feed():
         )
         cfg = db.session.get(Config, 'scenario_actif')
         scenario = cfg.value if cfg else ''
+        # Messages programmés en attente : visibles uniquement pour la Cellule de crise
+        if user_role == 'officiel':
+            pending_messages = (
+                Message.query
+                .filter_by(session_id=active_session.id, is_published=False, is_scheduled=True)
+                .order_by(Message.scheduled_for_minutes.asc())
+                .all()
+            )
 
     return render_template(
         'partials/feed.html',
         messages=messages,
+        pending_messages=pending_messages,
         active_session=active_session,
-        user_role=flask_session.get('role'),
+        user_role=user_role,
         scenario=scenario,
         fictive_time=fictive_time,
     )

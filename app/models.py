@@ -86,6 +86,14 @@ class Message(db.Model):
             return '--:--'
 
     @property
+    def scheduled_time_str(self) -> str:
+        """Heure fictive programmée au format HH:MM."""
+        if self.scheduled_for_minutes is None:
+            return '--:--'
+        m = int(self.scheduled_for_minutes)
+        return f'{(m // 60) % 24:02d}:{m % 60:02d}'
+
+    @property
     def comment_count(self) -> int:
         return self.comments.count()
 
