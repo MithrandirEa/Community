@@ -1,180 +1,93 @@
 # Plan de résolution — Usopp 🎯
 
-> Dernière mise à jour : 2026-04-15
+> Dernière mise à jour : 2026-04-16
 > Statut global : 🔵 En cours
 
 ---
 
 ## Problèmes actifs
 
+### 🔴 Critiques
+
+- [ ] **[#10] FIX : duplication des noms dans un pack**
+  - Sévérité : 🔴 Critique (bug fonctionnel — données corrompues silencieusement)
+  - Effort : 🟢 Rapide (< 30 min)
+  - Fichiers : `app/routes/admin.py` (fonction `namepack_add_entry`)
+  - Piste recommandée : vérifier l'unicité `(pack_id, role, label)` avant l'insert avec une requête `NameEntry.query.filter_by(...).first()` — un flash d'erreur si doublon détecté
+  - Dépend de : rien
+  - Risques : aucun
+
 ### 🟠 Importants
 
-- [ ] **[#4] FEAT : packs de noms fictifs pour l'admin**
-  - Sévérité : 🟠 Important
-  - Effort : 🔴 Long (3-6h)
-  - Fichiers : `app/models.py`, `app/routes/admin.py`, `app/templates/admin/namepacks.html` (nouveau), `app/templates/admin/dashboard.html`
-  - Piste recommandée : voir section détaillée ci-dessous
+- [ ] **[#15] ENHANCE : déplacer le badge + renommer onglet "Noms"**
+  - Sévérité : 🟠 Important (UX / lisibilité interface)
+  - Effort : 🟢 Rapide (< 30 min)
+  - Fichiers : tous les templates qui ont un header (`base.html`, `admin/dashboard.html`, `admin/namepacks.html`, `admin/config.html`, `admin/photos.html`, `officiel/feed.html`, `population/feed.html`)
+  - Piste recommandée : déplacer le `<span class="badge ...">` juste après le `<span class="brand">` dans chaque header ; renommer le bouton "Noms" en "Pack de noms" dans `admin/dashboard.html`
   - Dépend de : rien
-  - Bloque : #3
+  - Risques : changement purement HTML/CSS, aucun impact Python
 
-- [ ] **[#3] FEAT : sélecteur de personnage lors de la rédaction**
-  - Sévérité : 🟠 Important
-  - Effort : 🟡 Moyen (2-3h)
-  - Fichiers : `app/models.py`, `app/routes/officiel.py`, `app/routes/population.py`, `app/templates/officiel/feed.html`, `app/templates/population/feed.html`, `app/templates/partials/message_card.html`
-  - Piste recommandée : voir section détaillée ci-dessous
-  - Dépend de : #4
+- [ ] **[#11] ENHANCE : détail des packs en modale**
+  - Sévérité : 🟠 Important (UX admin : la liste des noms encombre la page)
+  - Effort : 🟡 Moyen (1-2h)
+  - Fichiers : `app/templates/admin/namepacks.html`
+  - Piste recommandée : la liste des noms est actuellement affichée directement dans chaque card. La remplacer par un bouton "Voir le pack" qui ouvre une `<dialog>` HTML5 (native, sans JS externe). La modale affiche les noms groupés par rôle + un bouton "Modifier" par nom (ou édition inline via un input caché). Fermeture par bouton Fermer ou clic en dehors.
+  - Dépend de : rien
+  - Risques : HTMX non nécessaire si on utilise `<dialog>` + JS vanilla minimal ; pas d'impact backend
+
+- [ ] **[#12] ENHANCE : dimensions max des photos (format 4:3)**
+  - Sévérité : 🟠 Important (design du feed)
+  - Effort : 🟢 Rapide (< 20 min)
+  - Fichiers : `app/static/css/styles.css` (classe `.message-photo`)
+  - Piste recommandée : `.message-photo` a déjà `object-fit: cover` mais `max-height: 360px`. Ajouter un `aspect-ratio: 4/3` (ou `3/4` pour les photos verticales) avec un `max-width: 100%` et `width: 100%`. Utiliser `object-fit: cover` pour que l'image remplit le cadre sans distorsion. Optionnellement, ajouter `object-position: center` pour centrer le sujet.
+  - Dépend de : rien
+  - Risques : aucun — CSS pur, les images existantes s'adaptent
 
 ### 🟡 Modérés
 
-- [ ] **[#5] ENHANCE : sélecteur heure/minute pour la programmation**
-  - Sévérité : 🟡 Modéré
-  - Effort : 🟢 Rapide (< 30 min)
-  - Fichiers : `app/templates/officiel/feed.html`
-  - Piste recommandée : voir section détaillée ci-dessous
+- [ ] **[#14] ENHANCE : responsive de l'app**
+  - Sévérité : 🟡 Modéré (important pour usage terrain sur Pi LAN)
+  - Effort : 🔴 Long (3-5h)
+  - Fichiers : `app/static/css/styles.css` (breakpoints `@media`)
+  - Piste recommandée : définir deux breakpoints — `@media (max-width: 768px)` pour les espaces officiel/population (tablette), `@media (max-width: 480px)` pour l'espace admin (smartphone). Adapter : header, compose-form, message-card, photo-picker, feed-main, admin-card, session-start-form, namepacks grid.
+  - Dépend de : #15 (évite de dupliquer des corrections de layout)
+  - Risques : peut casser des elements déjà OK sur desktop — tester sur plusieurs résolutions
+
+- [ ] **[#13] FEAT : avatar pour les noms des pack**
+  - Sévérité : 🟡 Modéré (amélioration visuelle, non bloquant)
+  - Effort : 🔴 Long (3-5h)
+  - Fichiers : `app/models.py` (`NameEntry`), `app/routes/admin.py` (upload avatar), `app/templates/admin/namepacks.html` (formulaire + affichage), `app/templates/partials/message_card.html` (affichage dans le feed)
+  - Piste recommandée : ajouter `avatar_filename` (nullable) sur `NameEntry`. Upload via un `FileField` dans la modale d'édition (issue #11 prérequise pour la modale). Validation magic bytes comme pour les photos de la photothèque. Affichage en `<img class="sender-avatar">` dans `message_card.html` si présent.
+  - Dépend de : #11 (modale d'édition)
+  - Risques : migration BDD (`ALTER TABLE name_entry ADD COLUMN avatar_filename VARCHAR(255)`), gestion des fichiers uploadés (dossier dédié `static/avatars/`)
+
+### 🟢 Mineurs
+
+- [ ] **[#17] CI/CD : GitHub Actions pour les tests**
+  - Sévérité : 🟢 Mineur (qualité de code, non bloquant pour la prod)
+  - Effort : 🟢 Rapide (< 1h)
+  - Fichiers : `.github/workflows/tests.yml` (à créer)
+  - Piste recommandée : workflow `on: [push, pull_request]` ciblant `development` et `main`. Job : `python -m pytest tests/ -x -q` sur Python 3.11+ avec installation des dépendances depuis `requirements.txt`.
   - Dépend de : rien
+  - Risques : aucun — read-only sur le code
 
 ---
 
 ## Ordre de résolution recommandé
 
-1. **[#5]** — Quick win indépendant, améliore l'UX existante sans toucher à la logique
-2. **[#4]** — Prérequis de #3, chunk principal (nouveau modèle + admin UI)
-3. **[#3]** — Finalisation fonctionnelle, dépend de #4
-
----
-
-## Détail des pistes par issue
-
----
-
-### [#5] Sélecteur heure/minute — ENHANCE
-
-**Problème** : Le champ de saisie de l'heure de programmation est un `<input type="text" placeholder="HH:MM">` peu ergonomique.
-
-**Piste recommandée** : ⭐ `<input type="time">`
-
-- **Principe** : Remplacer l'input texte par `<input type="time">` (natif HTML5). Les navigateurs le rendent en sélecteur heure/minute sur mobile et desktop. La valeur soumise est déjà au format `HH:MM`, compatible avec le validateur WTForms `Regexp(r'^\d{2}:\d{2}$')` existant dans `OfficielMessageForm`.
-- **Impact** :
-  - `app/templates/officiel/feed.html` — 1 ligne à modifier (type + attributs)
-  - 0 changement Python
-- **Complexité** : 🟢 Faible
-- **Risques** : aucun côté backend ; les navigateurs anciens (non ciblés : app sur Pi LAN) retombent sur un input texte classique.
-
-**Changement exact à faire** dans `officiel/feed.html` (ligne ~97) :
-```diff
-- <input type="text" name="scheduled_time" id="scheduled-time"
--        class="form-input schedule-time-input"
--        placeholder="HH:MM"
--        maxlength="5"
--        value="{{ form.scheduled_time.data or '' }}">
-+ <input type="time" name="scheduled_time" id="scheduled-time"
-+        class="form-input schedule-time-input"
-+        value="{{ form.scheduled_time.data or '' }}">
-```
-
----
-
-### [#4] Packs de noms fictifs — FEAT
-
-**Problème** : Il n'existe aucun moyen pour l'admin de définir des identités fictives pour les participants. Les modèles actuels ne contiennent aucune notion de "personnage" ou de "pack de noms".
-
-**Piste recommandée** : ⭐ Nouveaux modèles `NamePack` + `NameEntry`, liés à `Session`
-
-#### 4.1 — Nouveaux modèles (`app/models.py`)
-
-```python
-class NamePack(db.Model):
-    """Pack de noms fictifs défini par l'animateur."""
-    __tablename__ = 'name_pack'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False, unique=True)
-    entries = db.relationship('NameEntry', backref='pack', lazy='dynamic', cascade='all, delete-orphan')
-
-
-class NameEntry(db.Model):
-    """Entrée d'un pack : nom fictif associé à un rôle."""
-    __tablename__ = 'name_entry'
-
-    id = db.Column(db.Integer, primary_key=True)
-    pack_id = db.Column(db.Integer, db.ForeignKey('name_pack.id'), nullable=False)
-    # 'officiel' | 'population'
-    role = db.Column(db.String(20), nullable=False)
-    label = db.Column(db.String(100), nullable=False)
-```
-
-Et sur `Session`, ajouter une FK optionnelle :
-```python
-name_pack_id = db.Column(db.Integer, db.ForeignKey('name_pack.id'), nullable=True)
-name_pack    = db.relationship('NamePack', foreign_keys=[name_pack_id])
-```
-
-#### 4.2 — Nouvelles routes admin (`app/routes/admin.py`)
-
-| Méthode | Route | Action |
-|---------|-------|--------|
-| GET | `/admin/namepacks` | Liste des packs + formulaire création |
-| POST | `/admin/namepacks` | Créer un pack |
-| POST | `/admin/namepacks/<id>/delete` | Supprimer un pack |
-| POST | `/admin/namepacks/<id>/entries` | Ajouter un nom au pack |
-| POST | `/admin/namepacks/<id>/entries/<eid>/delete` | Supprimer un nom |
-
-Modifier `SessionConfigForm` : ajouter un `SelectField` pour choisir le pack actif (facultatif — valeur vide = pas de personnage).
-
-Modifier `session_start()` : sauvegarder `new_session.name_pack_id = form.name_pack_id.data or None`.
-
-#### 4.3 — Template admin
-
-Nouvelle page `app/templates/admin/namepacks.html` :
-- Liste des packs existants (accordéon ou tableau)
-- Pour chaque pack : liste des noms officiel / population avec boutons suppression
-- Formulaire d'ajout de pack (nom du pack)
-- Formulaire d'ajout d'entrée (role + label)
-
-Modifier `app/templates/admin/dashboard.html` : ajouter le sélecteur de pack dans le formulaire de démarrage de session.
-
-- **Complexité** : 🔴 Élevée
-- **Risques** : migration BDD — `db.create_all()` dans `create_app()` gère la création des nouvelles tables, pas besoin de migration Alembic. Vérifier que `db.create_all()` est bien appelé à l'init.
-
----
-
-### [#3] Sélecteur de personnage — FEAT
-
-**Problème** : Lors de la rédaction, les participants n'ont pas de moyen de s'identifier sous un nom fictif. Le modèle `Message` ne stocke pas de `sender_name`.
-
-**Piste recommandée** : ⭐ Champ `sender_name` sur `Message` + `SelectField` dans les formulaires
-
-#### 3.1 — Modèle (`app/models.py`)
-
-Ajouter sur `Message` :
-```python
-# Nom fictif du personnage (depuis le NamePack de la session), None si sans identité
-sender_name = db.Column(db.String(100), nullable=True)
-```
-
-#### 3.2 — Routes
-
-**`officiel.py`** :
-- `OfficielMessageForm` : ajouter `sender_name = SelectField(...)` avec `validators=[Optional()]` et `choices` chargées dynamiquement depuis `NameEntry.query.filter_by(pack_id=..., role='officiel')`
-- Le champ n'est affiché que si la session a un pack actif
-- La valeur vide ("— aucun nom —") doit être valide
-- Enregistrer `msg.sender_name = form.sender_name.data or None`
-
-**`population.py`** : idem avec `role='population'`
-
-#### 3.3 — Templates
-
-**`officiel/feed.html` et `population/feed.html`** :
-- Ajouter le `<select>` à gauche de la `<textarea>` (dans `.compose-form`) — cf. maquette dans l'issue #3
-
-**`partials/message_card.html`** :
-- Afficher `message.sender_name` si non None (ex: sous le badge de rôle)
-
-- **Complexité** : 🟡 Moyenne
-- **Risques** : si la session n'a pas de pack, le formulaire ne doit pas montrer le sélecteur (condition `{% if active_session.name_pack_id %}`). Gérer le cas où l'utilisateur change de pack en cours de session (les anciens messages gardent leur `sender_name` figé — OK).
+1. **[#10]** — Quick win critique, bug silencieux à corriger immédiatement
+2. **[#15]** — Quick win UX, 30 min, aucune dépendance
+3. **[#12]** — Quick win CSS, 20 min, aucune dépendance
+4. **[#17]** — Quick win CI/CD, 1h, aucune dépendance
+5. **[#11]** — Prérequis de #13, améliore l'ergonomie admin
+6. **[#14]** — Responsive, faire après #15 pour éviter les doublons de layout
+7. **[#13]** — Feature lourde, nécessite #11
 
 ---
 
 ## Historique des résolutions
 
-- [x] **[#2] ENHANCE : visibilité des messages programmés pour la Cellule de crise** — Résolu le 2026-04-15 — Messages `is_scheduled=True, is_published=False` affichés grisés en tête du feed officiel via `pending_messages` dans `htmx.py` et `officiel.py`. CSS `.message-pending` + `.pending-banner`. 95 tests verts.
+- [x] **[#2] ENHANCE : visibilité des messages programmés** — Résolu le 2026-04-15 — Messages grisés en tête du feed officiel via `pending_messages`. CSS `.message-pending` + `.pending-banner`. PR #6.
+- [x] **[#5] ENHANCE : sélecteur heure/minute** — Résolu le 2026-04-15 — `<input type="time">`. PR #7.
+- [x] **[#4] FEAT : packs de noms fictifs** — Résolu le 2026-04-15 — Modèles `NamePack`, `NameEntry`, routes CRUD admin, template `/admin/namepacks`. PR #8.
+- [x] **[#3] FEAT : sélecteur de personnage** — Résolu le 2026-04-15 — `sender_name` sur `Message`, `<select>` dans les formulaires officiel/population. PR #9.

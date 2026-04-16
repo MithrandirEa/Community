@@ -7,9 +7,9 @@
 
   <header class="app-header">
     <span class="brand">Community</span>
+    <span class="badge badge-admin">Animateur</span>
     <div class="fictive-clock" style="visibility:hidden"><span>--:--</span></div>
     <div class="header-actions">
-      <span class="badge badge-admin">Animateur</span>
       <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm btn-outline">← Dashboard</a>
       <a href="{{ url_for('admin.photos') }}" class="btn btn-sm btn-outline">Photothèque</a>
       <a href="{{ url_for('admin.config') }}" class="btn btn-sm btn-outline">Codes</a>
@@ -57,11 +57,29 @@
           {{ pack_form.hidden_tag() }}
           <button type="submit" class="btn btn-sm btn-danger">Supprimer le pack</button>
         </form>
+        <button type="button" class="btn btn-sm btn-outline"
+                onclick="document.getElementById('modal-pack-{{ pack.id }}').showModal()">
+          Voir le pack
+        </button>
       </div>
 
-      <!-- Entrées existantes -->
+      <!-- Compteur de noms -->
       {% set officiel_entries = pack.entries.filter_by(role='officiel').all() %}
       {% set population_entries = pack.entries.filter_by(role='population').all() %}
+      <p class="text-muted" style="font-size:.85rem;margin:0">
+        <span class="badge badge-officiel">{{ officiel_entries | length }} officiel{{ 's' if officiel_entries | length > 1 else '' }}</span>
+        &nbsp;
+        <span class="badge badge-population">{{ population_entries | length }} citoyen{{ 's' if population_entries | length > 1 else '' }}</span>
+      </p>
+    </div>
+
+    <!-- Modale détail du pack -->
+    <dialog id="modal-pack-{{ pack.id }}" class="pack-modal">
+      <div class="pack-modal-header">
+        <h3 style="margin:0">📦 {{ pack.name }}</h3>
+        <button type="button" class="btn-icon" autofocus
+                onclick="this.closest('dialog').close()" aria-label="Fermer">✕</button>
+      </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
         <!-- Colonne Officiel -->
@@ -73,7 +91,30 @@
           <ul class="namelist">
             {% for entry in officiel_entries %}
             <li class="namelist-item">
-              <span>{{ entry.label }}</span>
+              {% if entry.avatar_filename %}
+              <img src="{{ url_for('static', filename='avatars/' ~ entry.avatar_filename) }}"
+                   class="entry-avatar" alt="{{ entry.label }}">
+              {% else %}
+              <span class="entry-avatar entry-avatar-placeholder">👤</span>
+              {% endif %}
+              <span style="flex:1">{{ entry.label }}</span>
+              <form method="POST" action="{{ url_for('admin.namepack_entry_avatar', pack_id=pack.id, entry_id=entry.id) }}"
+                    enctype="multipart/form-data" style="display:inline;margin-right:4px" title="Changer l'avatar">
+                {{ pack_form.hidden_tag() }}
+                <label class="btn-icon" title="Avatar" style="cursor:pointer">
+                  🖼
+                  <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp"
+                         style="display:none" onchange="this.form.submit()">
+                </label>
+              </form>
+              {% if entry.avatar_filename %}
+              <form method="POST" action="{{ url_for('admin.namepack_entry_avatar', pack_id=pack.id, entry_id=entry.id) }}"
+                    style="display:inline;margin-right:4px">
+                {{ pack_form.hidden_tag() }}
+                <input type="hidden" name="delete_avatar" value="1">
+                <button type="submit" class="btn-icon" title="Supprimer l'avatar" aria-label="Supprimer l'avatar de {{ entry.label }}">🗑</button>
+              </form>
+              {% endif %}
               <form method="POST" action="{{ url_for('admin.namepack_delete_entry', pack_id=pack.id, entry_id=entry.id) }}" style="display:inline">
                 {{ pack_form.hidden_tag() }}
                 <button type="submit" class="btn-icon" title="Supprimer" aria-label="Supprimer {{ entry.label }}">✕</button>
@@ -95,7 +136,30 @@
           <ul class="namelist">
             {% for entry in population_entries %}
             <li class="namelist-item">
-              <span>{{ entry.label }}</span>
+              {% if entry.avatar_filename %}
+              <img src="{{ url_for('static', filename='avatars/' ~ entry.avatar_filename) }}"
+                   class="entry-avatar" alt="{{ entry.label }}">
+              {% else %}
+              <span class="entry-avatar entry-avatar-placeholder">👤</span>
+              {% endif %}
+              <span style="flex:1">{{ entry.label }}</span>
+              <form method="POST" action="{{ url_for('admin.namepack_entry_avatar', pack_id=pack.id, entry_id=entry.id) }}"
+                    enctype="multipart/form-data" style="display:inline;margin-right:4px" title="Changer l'avatar">
+                {{ pack_form.hidden_tag() }}
+                <label class="btn-icon" title="Avatar" style="cursor:pointer">
+                  🖼
+                  <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp"
+                         style="display:none" onchange="this.form.submit()">
+                </label>
+              </form>
+              {% if entry.avatar_filename %}
+              <form method="POST" action="{{ url_for('admin.namepack_entry_avatar', pack_id=pack.id, entry_id=entry.id) }}"
+                    style="display:inline;margin-right:4px">
+                {{ pack_form.hidden_tag() }}
+                <input type="hidden" name="delete_avatar" value="1">
+                <button type="submit" class="btn-icon" title="Supprimer l'avatar" aria-label="Supprimer l'avatar de {{ entry.label }}">🗑</button>
+              </form>
+              {% endif %}
               <form method="POST" action="{{ url_for('admin.namepack_delete_entry', pack_id=pack.id, entry_id=entry.id) }}" style="display:inline">
                 {{ pack_form.hidden_tag() }}
                 <button type="submit" class="btn-icon" title="Supprimer" aria-label="Supprimer {{ entry.label }}">✕</button>
@@ -122,7 +186,12 @@
                maxlength="100" style="flex:1;min-width:140px" required>
         <button type="submit" class="btn btn-sm btn-outline">Ajouter</button>
       </form>
-    </div>
+
+      <div style="text-align:right;margin-top:16px">
+        <button type="button" class="btn btn-sm btn-outline"
+                onclick="this.closest('dialog').close()">Fermer</button>
+      </div>
+    </dialog>
     {% endfor %}
 
     {% else %}
@@ -155,5 +224,56 @@
   border-radius: var(--radius-sm);
 }
 .btn-icon:hover { background: var(--color-error-light, #fee2e2); color: var(--color-error, #dc2626); }
+
+/* Avatar entrée */
+.entry-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  margin-right: 6px;
+}
+.entry-avatar-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .9rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+
+/* Modale pack */
+.pack-modal {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  max-width: 560px;
+  width: 90vw;
+  box-shadow: 0 8px 32px rgba(0,0,0,.15);
+}
+.pack-modal::backdrop {
+  background: rgba(0,0,0,.4);
+}
+.pack-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+/* Fermeture au clic en dehors */
 </style>
+<script>
+document.querySelectorAll('.pack-modal').forEach(function(dialog) {
+  dialog.addEventListener('click', function(e) {
+    var rect = dialog.getBoundingClientRect();
+    if (e.clientX < rect.left || e.clientX > rect.right ||
+        e.clientY < rect.top  || e.clientY > rect.bottom) {
+      dialog.close();
+    }
+  });
+});
+</script>
 {% endblock %}
