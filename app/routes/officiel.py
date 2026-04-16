@@ -78,6 +78,7 @@ def feed():
 
                 # Validation du sender_name : doit appartenir aux noms officiels du pack actif
                 sender = (form.sender_name.data or '').strip() or None
+                sender_avatar = None
                 if sender and active_session.name_pack_id:
                     valid = NameEntry.query.filter_by(
                         pack_id=active_session.name_pack_id,
@@ -86,6 +87,8 @@ def feed():
                     ).first()
                     if not valid:
                         sender = None
+                    else:
+                        sender_avatar = valid.avatar_filename
 
                 msg = Message(
                     session_id=active_session.id,
@@ -97,6 +100,7 @@ def feed():
                     is_published=not is_scheduled,
                     real_published_at=datetime.now(timezone.utc).replace(tzinfo=None) if not is_scheduled else None,
                     sender_name=sender,
+                    sender_avatar_filename=sender_avatar,
                 )
                 db.session.add(msg)
                 db.session.commit()

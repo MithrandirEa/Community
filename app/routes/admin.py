@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from flask import (Blueprint, current_app, flash, redirect,
                    render_template, request, url_for)
 from flask_wtf import FlaskForm
-from flask_wtf.file import FileField, FileRequired
+from flask_wtf.file import FileField, FileAllowed, FileRequired
 from werkzeug.utils import secure_filename
 from wtforms import StringField, SubmitField
 from wtforms.validators import DataRequired, Optional, Regexp
@@ -394,6 +394,11 @@ def namepack_add_entry(pack_id):
         flash('Le nom fictif ne peut pas être vide.', 'error')
         return redirect(url_for('admin.namepacks'))
 
+    existing = NameEntry.query.filter_by(pack_id=pack.id, role=role, label=label).first()
+    if existing:
+        flash(f'Le nom «{label}» existe déjà dans ce pack pour ce rôle.', 'error')
+        return redirect(url_for('admin.namepacks'))
+
     db.session.add(NameEntry(pack_id=pack.id, role=role, label=label))
     db.session.commit()
     flash(f'Nom «{label}» ajouté au pack «{pack.name}».', 'success')
@@ -411,5 +416,66 @@ def namepack_delete_entry(pack_id, entry_id):
     db.session.delete(entry)
     db.session.commit()
     flash(f'Nom «{entry.label}» supprimé.', 'success')
+    return redirect(url_for('admin.namepacks'))
+
+
+@admin_bp.route('/namepacks/<int:pack_id>/entries/<int:entry_id>/avatar', methods=['POST'])
+@require_role('admin')
+def namepack_entry_avatar(pack_id, entry_id):
+    """Upload ou suppression de l'avatar d'un nom fictif."""
+    entry = db.get_or_404(NameEntry, entry_id)
+    if entry.pack_id != pack_id:
+        flash('Entrée introuvable dans ce pack.', 'error')
+        return redirect(url_for('admin.namepacks'))
+
+    # Suppression de l'avatar existant
+    if request.form.get('delete_avatar'):
+        if entry.avatar_filename:
+            avatar_path = os.path.join(
+                current_app.root_path, 'static', 'avatars', entry.avatar_filename
+            )
+            if os.path.exists(avatar_path):
+                os.remove(avatar_path)
+            entry.avatar_filename = None
+            db.session.commit()
+            flash(f'Avatar de «{entry.label}» supprimé.', 'success')
+        return redirect(url_for('admin.namepacks'))
+
+    # Upload d'un nouvel avatar
+    file = request.files.get('avatar')
+    if not file or file.filename == '':
+        flash('Aucun fichier sélectionné.', 'error')
+        return redirect(url_for('admin.namepacks'))
+
+    file_bytes = file.read()
+    if len(file_bytes) > 512 * 1024:  # 512 Ko max
+        flash('Fichier trop volumineux (max 512 Ko).', 'error')
+        return redirect(url_for('admin.namepacks'))
+
+    detected_mime = _check_image_magic(file_bytes)
+    if detected_mime not in _ALLOWED_MIME:
+        flash('Format de fichier non autorisé (JPEG, PNG ou WebP uniquement).', 'error')
+        return redirect(url_for('admin.namepacks'))
+
+    avatars_dir = os.path.join(current_app.root_path, 'static', 'avatars')
+    os.makedirs(avatars_dir, exist_ok=True)
+
+    # Supprimer l'ancien avatar si existant
+    if entry.avatar_filename:
+        old_path = os.path.join(avatars_dir, entry.avatar_filename)
+        if os.path.exists(old_path):
+            os.remove(old_path)
+
+    ext_map = {'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp'}
+    ext = ext_map[detected_mime]
+    filename = f'{uuid.uuid4().hex}{ext}'
+    file_path = os.path.join(avatars_dir, filename)
+
+    with open(file_path, 'wb') as f:
+        f.write(file_bytes)
+
+    entry.avatar_filename = filename
+    db.session.commit()
+    flash(f'Avatar de «{entry.label}» mis à jour.', 'success')
     return redirect(url_for('admin.namepacks'))
 

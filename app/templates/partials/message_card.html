@@ -14,7 +14,12 @@
 
   <div class="message-card-header">
     <div class="message-avatar avatar-{{ message.role }}">
+      {% if message.sender_avatar_filename %}
+      <img src="{{ url_for('static', filename='avatars/' ~ message.sender_avatar_filename) }}"
+           class="message-avatar-img" alt="{{ message.sender_name }}">
+      {% else %}
       {{ 'CC' if message.role == 'officiel' else 'CI' }}
+      {% endif %}
     </div>
     <div class="message-meta">
       <div class="message-author">
