@@ -1,8 +1,16 @@
 {#
   partials/message_card.html
   Reçoit (depuis le contexte de la boucle) : message, scenario, user_role
+  Variable optionnelle : pending (bool) — True pour les messages programmés en attente
 #}
-<article class="message-card" id="msg-{{ message.id }}">
+{% set is_pending = pending is defined and pending %}
+<article class="message-card{% if is_pending %} message-pending{% endif %}" id="msg-{{ message.id }}">
+
+  {% if is_pending %}
+  <div class="pending-banner">
+    🕐 Envoi programmé à <strong>{{ message.scheduled_time_str }}</strong>
+  </div>
+  {% endif %}
 
   <div class="message-card-header">
     <div class="message-avatar avatar-{{ message.role }}">
@@ -10,12 +18,22 @@
     </div>
     <div class="message-meta">
       <div class="message-author">
+        {% if message.sender_name %}
+        <strong>{{ message.sender_name | e }}</strong>
+        {% else %}
         {{ 'Cellule de crise' if message.role == 'officiel' else 'Citoyen' }}
+        {% endif %}
         <span class="badge badge-{{ message.role }}">
           {{ 'Officiel' if message.role == 'officiel' else 'Population' }}
         </span>
       </div>
-      <div class="message-time">{{ message.fictive_time_str }}</div>
+      <div class="message-time">
+        {% if is_pending %}
+          — en attente —
+        {% else %}
+          {{ message.fictive_time_str }}
+        {% endif %}
+      </div>
     </div>
   </div>
 
@@ -28,6 +46,7 @@
        loading="lazy">
   {% endif %}
 
+  {% if not is_pending %}
   <div class="message-footer">
     <button class="btn btn-sm btn-outline reply-btn"
             hx-get="{{ url_for('htmx.comments_section', message_id=message.id) }}"
@@ -39,5 +58,6 @@
       {% if count > 0 %}({{ count }}){% endif %}
     </button>
   </div>
+  {% endif %}
 
 </article>

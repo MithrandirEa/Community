@@ -18,6 +18,9 @@ class Session(db.Model):
     messages = db.relationship(
         'Message', backref='session', lazy='dynamic', cascade='all, delete-orphan'
     )
+    # Pack de noms fictifs associé à la session (optionnel)
+    name_pack_id = db.Column(db.Integer, db.ForeignKey('name_pack.id'), nullable=True)
+    name_pack = db.relationship('NamePack', foreign_keys=[name_pack_id])
 
     # --- Helpers horloge fictive ---
 
@@ -70,6 +73,8 @@ class Message(db.Model):
     scheduled_for_minutes = db.Column(db.Integer, nullable=True)
     # False = en attente de publication (message programmé non encore déclenché)
     is_published = db.Column(db.Boolean, default=True, nullable=False)
+    # Nom fictif du personnage (depuis le NamePack de la session), None si sans identité
+    sender_name = db.Column(db.String(100), nullable=True)
 
     comments = db.relationship(
         'Comment', backref='message', lazy='dynamic', cascade='all, delete-orphan'
@@ -84,6 +89,14 @@ class Message(db.Model):
             return self.session.real_to_fictive(self.real_published_at)
         except Exception:
             return '--:--'
+
+    @property
+    def scheduled_time_str(self) -> str:
+        """Heure fictive programmée au format HH:MM."""
+        if self.scheduled_for_minutes is None:
+            return '--:--'
+        m = int(self.scheduled_for_minutes)
+        return f'{(m // 60) % 24:02d}:{m % 60:02d}'
 
     @property
     def comment_count(self) -> int:
@@ -130,3 +143,25 @@ class Config(db.Model):
 
     key = db.Column(db.String(50), primary_key=True)
     value = db.Column(db.Text, nullable=False)
+
+
+class NamePack(db.Model):
+    """Pack de noms fictifs défini par l'animateur."""
+    __tablename__ = 'name_pack'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    entries = db.relationship(
+        'NameEntry', backref='pack', lazy='dynamic', cascade='all, delete-orphan'
+    )
+
+
+class NameEntry(db.Model):
+    """Entrée d'un pack : nom fictif associé à un rôle."""
+    __tablename__ = 'name_entry'
+
+    id = db.Column(db.Integer, primary_key=True)
+    pack_id = db.Column(db.Integer, db.ForeignKey('name_pack.id'), nullable=False)
+    # 'officiel' | 'population'
+    role = db.Column(db.String(20), nullable=False)
+    label = db.Column(db.String(100), nullable=False)

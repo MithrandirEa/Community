@@ -6,7 +6,7 @@ from wtforms import BooleanField, StringField, SubmitField, TextAreaField
 from wtforms.validators import DataRequired, Length, Optional, Regexp
 
 from app import db
-from app.models import Config, Message, Photo
+from app.models import Config, Message, NameEntry, Photo
 from app.models import Session as SimSession
 from app.utils.helpers import require_role
 
@@ -23,6 +23,8 @@ class OfficielMessageForm(FlaskForm):
     )
     # Chemin relatif depuis static/photos/ (ex: "scenario1/uuid_photo.jpg")
     photo_filename = StringField(validators=[Optional()])
+    # Nom fictif du personnage (optionnel, issu du NamePack de la session)
+    sender_name = StringField(validators=[Optional()])
     is_scheduled = BooleanField('Programmer')
     scheduled_time = StringField(
         validators=[
@@ -74,6 +76,17 @@ def feed():
                     else:
                         photo_fn = None
 
+                # Validation du sender_name : doit appartenir aux noms officiels du pack actif
+                sender = (form.sender_name.data or '').strip() or None
+                if sender and active_session.name_pack_id:
+                    valid = NameEntry.query.filter_by(
+                        pack_id=active_session.name_pack_id,
+                        role='officiel',
+                        label=sender,
+                    ).first()
+                    if not valid:
+                        sender = None
+
                 msg = Message(
                     session_id=active_session.id,
                     role='officiel',
@@ -83,12 +96,14 @@ def feed():
                     scheduled_for_minutes=scheduled_minutes,
                     is_published=not is_scheduled,
                     real_published_at=datetime.now(timezone.utc).replace(tzinfo=None) if not is_scheduled else None,
+                    sender_name=sender,
                 )
                 db.session.add(msg)
                 db.session.commit()
                 return redirect(url_for('officiel.feed'))
 
     messages = []
+    pending_messages = []
     fictive_time = '--:--'
     if active_session:
         fictive_time = active_session.get_fictive_time_str()
@@ -96,6 +111,12 @@ def feed():
             Message.query
             .filter_by(session_id=active_session.id, is_published=True)
             .order_by(Message.real_published_at.desc())
+            .all()
+        )
+        pending_messages = (
+            Message.query
+            .filter_by(session_id=active_session.id, is_published=False, is_scheduled=True)
+            .order_by(Message.scheduled_for_minutes.asc())
             .all()
         )
 
@@ -111,14 +132,26 @@ def feed():
             .all()
         )
 
+    # Noms officiels disponibles si la session a un pack actif
+    sender_names = []
+    if active_session and active_session.name_pack_id:
+        sender_names = (
+            NameEntry.query
+            .filter_by(pack_id=active_session.name_pack_id, role='officiel')
+            .order_by(NameEntry.label)
+            .all()
+        )
+
     return render_template(
         'officiel/feed.html',
         form=form,
         messages=messages,
+        pending_messages=pending_messages,
         active_session=active_session,
         fictive_time=fictive_time,
         error=error,
         photos=photos,
         scenario=scenario,
+        sender_names=sender_names,
     )
 
