@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+
+{% block title %}Community — Packs de noms{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+
+  <header class="app-header">
+    <span class="brand">Community</span>
+    <div class="fictive-clock" style="visibility:hidden"><span>--:--</span></div>
+    <div class="header-actions">
+      <span class="badge badge-admin">Animateur</span>
+      <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm btn-outline">← Dashboard</a>
+      <a href="{{ url_for('admin.photos') }}" class="btn btn-sm btn-outline">Photothèque</a>
+      <a href="{{ url_for('admin.config') }}" class="btn btn-sm btn-outline">Codes</a>
+      <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">Quitter</a>
+    </div>
+  </header>
+
+  <div class="admin-content" style="padding:24px;max-width:760px;margin:0 auto">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'error' if category == 'error' else 'success' }}" role="alert">
+      {{ message }}
+    </div>
+    {% endfor %}
+    {% endwith %}
+
+    <!-- Création d'un nouveau pack -->
+    <div class="admin-card mb-3">
+      <h2 class="admin-section-title">Nouveau pack de noms</h2>
+      <p class="text-muted mb-3">
+        Un pack regroupe les noms fictifs des participants (Cellule de crise et Population).
+        Il est sélectionnable lors du démarrage d'une session.
+      </p>
+      <form method="POST" action="{{ url_for('admin.namepacks') }}" class="d-flex gap-2" style="align-items:flex-start;flex-wrap:wrap">
+        {{ pack_form.hidden_tag() }}
+        <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0">
+          {{ pack_form.name(class='form-input', placeholder='Ex : Scénario inondation') }}
+          {% for err in pack_form.name.errors %}
+          <span class="field-error">{{ err }}</span>
+          {% endfor %}
+        </div>
+        <button type="submit" name="pack-submit" value="1" class="btn btn-primary">Créer le pack</button>
+      </form>
+    </div>
+
+    <!-- Liste des packs existants -->
+    {% if packs %}
+    {% for pack in packs %}
+    <div class="admin-card mb-3">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 style="margin:0;font-size:1rem">📦 {{ pack.name }}</h3>
+        <form method="POST" action="{{ url_for('admin.namepack_delete', pack_id=pack.id) }}"
+              onsubmit="return confirm('Supprimer le pack «{{ pack.name }}» et tous ses noms ?')">
+          {{ pack_form.hidden_tag() }}
+          <button type="submit" class="btn btn-sm btn-danger">Supprimer le pack</button>
+        </form>
+      </div>
+
+      <!-- Entrées existantes -->
+      {% set officiel_entries = pack.entries.filter_by(role='officiel').all() %}
+      {% set population_entries = pack.entries.filter_by(role='population').all() %}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <!-- Colonne Officiel -->
+        <div>
+          <p class="text-muted" style="font-size:.8rem;margin-bottom:6px">
+            <span class="badge badge-officiel">Officiel</span> Cellule de crise
+          </p>
+          {% if officiel_entries %}
+          <ul class="namelist">
+            {% for entry in officiel_entries %}
+            <li class="namelist-item">
+              <span>{{ entry.label }}</span>
+              <form method="POST" action="{{ url_for('admin.namepack_delete_entry', pack_id=pack.id, entry_id=entry.id) }}" style="display:inline">
+                {{ pack_form.hidden_tag() }}
+                <button type="submit" class="btn-icon" title="Supprimer" aria-label="Supprimer {{ entry.label }}">✕</button>
+              </form>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="text-muted" style="font-size:.85rem;font-style:italic">Aucun nom officiel.</p>
+          {% endif %}
+        </div>
+
+        <!-- Colonne Population -->
+        <div>
+          <p class="text-muted" style="font-size:.8rem;margin-bottom:6px">
+            <span class="badge badge-population">Population</span> Citoyens
+          </p>
+          {% if population_entries %}
+          <ul class="namelist">
+            {% for entry in population_entries %}
+            <li class="namelist-item">
+              <span>{{ entry.label }}</span>
+              <form method="POST" action="{{ url_for('admin.namepack_delete_entry', pack_id=pack.id, entry_id=entry.id) }}" style="display:inline">
+                {{ pack_form.hidden_tag() }}
+                <button type="submit" class="btn-icon" title="Supprimer" aria-label="Supprimer {{ entry.label }}">✕</button>
+              </form>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="text-muted" style="font-size:.85rem;font-style:italic">Aucun nom citoyen.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Formulaire d'ajout d'un nom -->
+      <form method="POST" action="{{ url_for('admin.namepack_add_entry', pack_id=pack.id) }}"
+            class="d-flex gap-2" style="align-items:center;flex-wrap:wrap;border-top:1px solid var(--color-border);padding-top:12px">
+        {{ entry_form.hidden_tag() }}
+        <select name="entry-role" class="form-input" style="width:auto" required>
+          <option value="">Rôle…</option>
+          <option value="officiel">Officiel</option>
+          <option value="population">Population</option>
+        </select>
+        <input type="text" name="entry-label" class="form-input" placeholder="Nom fictif…"
+               maxlength="100" style="flex:1;min-width:140px" required>
+        <button type="submit" class="btn btn-sm btn-outline">Ajouter</button>
+      </form>
+    </div>
+    {% endfor %}
+
+    {% else %}
+    <div class="admin-card">
+      <p class="text-muted text-center">Aucun pack de noms. Créez-en un ci-dessus.</p>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<style>
+.namelist { list-style:none; margin:0; padding:0; }
+.namelist-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: .9rem;
+}
+.namelist-item:nth-child(odd) { background: var(--color-background); }
+.btn-icon {
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: .8rem;
+  border-radius: var(--radius-sm);
+}
+.btn-icon:hover { background: var(--color-error-light, #fee2e2); color: var(--color-error, #dc2626); }
+</style>
+{% endblock %}
