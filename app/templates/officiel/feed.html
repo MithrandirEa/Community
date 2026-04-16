@@ -89,10 +89,8 @@
             Programmer à
           </label>
           <span id="schedule-wrap" style="display:{{ 'inline-flex' if form.is_scheduled.data else 'none' }}">
-            <input type="text" name="scheduled_time" id="scheduled-time"
+            <input type="time" name="scheduled_time" id="scheduled-time"
                    class="form-input schedule-time-input"
-                   placeholder="HH:MM"
-                   maxlength="5"
                    value="{{ form.scheduled_time.data or '' }}">
           </span>
         </div>
