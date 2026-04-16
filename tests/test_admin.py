@@ -12,12 +12,16 @@ Couvre :
 - GET  /admin/config            → 200
 - POST /admin/config            → met à jour les codes officiel/population
 - GET  /admin/photos            → 200
+- POST /admin/namepacks/<id>/entries/<entry_id>/avatar → upload/suppression avatar
 """
+
+import io
+from unittest.mock import mock_open, patch
 
 import pytest
 
 from app import db
-from app.models import Session as SimSession, Config as AppConfig
+from app.models import Session as SimSession, Config as AppConfig, NamePack, NameEntry
 
 
 # ---------------------------------------------------------------------------
@@ -177,3 +181,189 @@ def test_admin_config_post_updates_codes(app, admin_client):
 def test_admin_photos_returns_200(admin_client):
     resp = admin_client.get('/admin/photos')
     assert resp.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# POST /admin/namepacks/<pack_id>/entries
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def pack_in_db(app):
+    """Crée un NamePack vide en base et retourne (app, pack_id)."""
+    with app.app_context():
+        pack = NamePack(name='Pack Test')
+        db.session.add(pack)
+        db.session.commit()
+        pack_id = pack.id
+    return app, pack_id
+
+
+def test_namepack_add_entry_adds_new_entry(pack_in_db, admin_client):
+    """Ajout nominal : l'entrée est bien créée en base."""
+    app, pack_id = pack_in_db
+    resp = admin_client.post(
+        f'/admin/namepacks/{pack_id}/entries',
+        data={'entry-role': 'officiel', 'entry-label': 'Jean Dupont'},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    with app.app_context():
+        entry = NameEntry.query.filter_by(pack_id=pack_id, role='officiel', label='Jean Dupont').first()
+        assert entry is not None
+
+
+def test_namepack_add_entry_duplicate_flashes_error(pack_in_db, admin_client):
+    """Doublon (même pack, même rôle, même label) → flash d'erreur, pas d'insert."""
+    app, pack_id = pack_in_db
+    # Première insertion
+    admin_client.post(
+        f'/admin/namepacks/{pack_id}/entries',
+        data={'entry-role': 'officiel', 'entry-label': 'Marie Curie'},
+        follow_redirects=False,
+    )
+    # Tentative de doublon
+    resp = admin_client.post(
+        f'/admin/namepacks/{pack_id}/entries',
+        data={'entry-role': 'officiel', 'entry-label': 'Marie Curie'},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert 'Marie Curie' in resp.get_data(as_text=True)
+    with app.app_context():
+        count = NameEntry.query.filter_by(pack_id=pack_id, role='officiel', label='Marie Curie').count()
+        assert count == 1
+
+
+def test_namepack_add_entry_invalid_role_flashes_error(pack_in_db, admin_client):
+    """Rôle invalide → redirection sans insert."""
+    app, pack_id = pack_in_db
+    resp = admin_client.post(
+        f'/admin/namepacks/{pack_id}/entries',
+        data={'entry-role': 'inconnu', 'entry-label': 'Test'},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    with app.app_context():
+        assert NameEntry.query.filter_by(pack_id=pack_id).count() == 0
+
+
+def test_namepack_add_entry_empty_label_flashes_error(pack_in_db, admin_client):
+    """Label vide → redirection sans insert."""
+    app, pack_id = pack_in_db
+    resp = admin_client.post(
+        f'/admin/namepacks/{pack_id}/entries',
+        data={'entry-role': 'population', 'entry-label': '   '},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    with app.app_context():
+        assert NameEntry.query.filter_by(pack_id=pack_id).count() == 0
+
+
+# ---------------------------------------------------------------------------
+# POST /admin/namepacks/<pack_id>/entries/<entry_id>/avatar
+# ---------------------------------------------------------------------------
+
+# Magic bytes PNG minimaux (< 512 Ko, mime valide)
+_FAKE_PNG = b'\x89PNG\r\n\x1a\n' + b'\x00' * 50
+# Bytes invalides (pas de magic bytes reconnus)
+_FAKE_TXT = b'This is not an image file.' + b'\x00' * 10
+
+
+@pytest.fixture
+def entry_in_db(pack_in_db):
+    """Crée un NameEntry dans le pack et retourne (app, pack_id, entry_id)."""
+    app, pack_id = pack_in_db
+    with app.app_context():
+        entry = NameEntry(pack_id=pack_id, role='officiel', label='Dupont')
+        db.session.add(entry)
+        db.session.commit()
+        entry_id = entry.id
+    return app, pack_id, entry_id
+
+
+def test_namepack_entry_avatar_no_file_flashes_error(entry_in_db, admin_client):
+    """Aucun fichier joint → flash erreur, redirect."""
+    app, pack_id, entry_id = entry_in_db
+    resp = admin_client.post(
+        f'/admin/namepacks/{pack_id}/entries/{entry_id}/avatar',
+        data={},
+        content_type='multipart/form-data',
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    with app.app_context():
+        entry = db.session.get(NameEntry, entry_id)
+        assert entry.avatar_filename is None
+
+
+def test_namepack_entry_avatar_invalid_mime_flashes_error(entry_in_db, admin_client):
+    """Fichier sans magic bytes valides → flash erreur, avatar_filename inchangé."""
+    app, pack_id, entry_id = entry_in_db
+    with patch('app.routes.admin.os.makedirs'):
+        resp = admin_client.post(
+            f'/admin/namepacks/{pack_id}/entries/{entry_id}/avatar',
+            data={'avatar': (io.BytesIO(_FAKE_TXT), 'file.txt')},
+            content_type='multipart/form-data',
+            follow_redirects=False,
+        )
+    assert resp.status_code == 302
+    with app.app_context():
+        entry = db.session.get(NameEntry, entry_id)
+        assert entry.avatar_filename is None
+
+
+def test_namepack_entry_avatar_too_large_flashes_error(entry_in_db, admin_client):
+    """Fichier > 512 Ko → flash erreur, avatar_filename inchangé."""
+    app, pack_id, entry_id = entry_in_db
+    oversized = _FAKE_PNG + b'\x00' * (512 * 1024)  # > 512 Ko
+    with patch('app.routes.admin.os.makedirs'):
+        resp = admin_client.post(
+            f'/admin/namepacks/{pack_id}/entries/{entry_id}/avatar',
+            data={'avatar': (io.BytesIO(oversized), 'big.png')},
+            content_type='multipart/form-data',
+            follow_redirects=False,
+        )
+    assert resp.status_code == 302
+    with app.app_context():
+        entry = db.session.get(NameEntry, entry_id)
+        assert entry.avatar_filename is None
+
+
+def test_namepack_entry_avatar_upload_saves_filename(entry_in_db, admin_client):
+    """Upload PNG valide → avatar_filename renseigné et se termine par .png."""
+    app, pack_id, entry_id = entry_in_db
+    with patch('app.routes.admin.os.makedirs'), \
+         patch('app.routes.admin.open', mock_open(), create=True):
+        resp = admin_client.post(
+            f'/admin/namepacks/{pack_id}/entries/{entry_id}/avatar',
+            data={'avatar': (io.BytesIO(_FAKE_PNG), 'avatar.png')},
+            content_type='multipart/form-data',
+            follow_redirects=False,
+        )
+    assert resp.status_code == 302
+    with app.app_context():
+        entry = db.session.get(NameEntry, entry_id)
+        assert entry.avatar_filename is not None
+        assert entry.avatar_filename.endswith('.png')
+
+
+def test_namepack_entry_avatar_delete_clears_filename(entry_in_db, admin_client):
+    """POST delete_avatar=1 → avatar_filename remis à None."""
+    app, pack_id, entry_id = entry_in_db
+    # Pré-remplir un avatar fictif en base (sans fichier réel sur disque)
+    with app.app_context():
+        entry = db.session.get(NameEntry, entry_id)
+        entry.avatar_filename = 'abc123.png'
+        db.session.commit()
+
+    with patch('app.routes.admin.os.path.exists', return_value=False):
+        resp = admin_client.post(
+            f'/admin/namepacks/{pack_id}/entries/{entry_id}/avatar',
+            data={'delete_avatar': '1'},
+            follow_redirects=False,
+        )
+    assert resp.status_code == 302
+    with app.app_context():
+        entry = db.session.get(NameEntry, entry_id)
+        assert entry.avatar_filename is None

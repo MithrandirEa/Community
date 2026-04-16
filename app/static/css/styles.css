@@ -373,6 +373,14 @@ textarea.form-input {
     font-weight: 700;
     font-size: .85rem;
     flex-shrink: 0;
+    overflow: hidden;
+}
+
+.message-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
 }
 
 .avatar-officiel {
@@ -412,8 +420,10 @@ textarea.form-input {
 
 .message-photo {
     width: 100%;
-    max-height: 360px;
+    aspect-ratio: 4 / 3;
+    max-height: 480px;
     object-fit: cover;
+    object-position: center;
     border-top: 1px solid var(--color-border);
 }
 
@@ -788,5 +798,81 @@ textarea.form-input {
 /* Séparateur visuel du feed */
 .feed-main {
     padding-bottom: 16px;
+}
+
+/* =========================================================
+   Responsive — tablette (≤ 768px) : Officiel / Population
+   ========================================================= */
+
+@media (max-width: 768px) {
+    /* Header */
+    .app-header {
+        height: auto;
+        min-height: 56px;
+        flex-wrap: wrap;
+        padding: 8px 12px;
+        gap: 6px;
+    }
+    .fictive-clock {
+        font-size: .95rem;
+        padding: 3px 8px;
+    }
+    .fictive-clock .clock-label { display: none; }
+    .header-actions { gap: 4px; }
+    .header-actions .btn-sm { font-size: .75rem; padding: 4px 8px; }
+
+    /* Feed */
+    .feed-main { max-width: 100%; }
+    .message-card { border-radius: var(--radius-sm); }
+    .message-body { font-size: .9rem; padding: 10px 12px; }
+    .message-header { padding: 8px 12px; }
+
+    /* Compose */
+    .compose-section { padding: 8px 10px; }
+    .compose-form { max-width: 100%; }
+    .compose-row { flex-direction: column; gap: 6px; }
+    .compose-sender-select { width: 100%; min-width: unset; }
+    .compose-textarea { min-height: 60px; font-size: .875rem; }
+    .compose-actions { flex-wrap: wrap; }
+    .compose-options { flex-wrap: wrap; gap: 4px; }
+
+    /* Panneau réponses */
+    .reply-panel-container { max-width: 100%; }
+}
+
+/* =========================================================
+   Responsive — smartphone (≤ 480px) : Admin
+   ========================================================= */
+
+@media (max-width: 480px) {
+    /* Header admin */
+    .app-header .brand { font-size: 1rem; }
+    .header-actions { flex-wrap: wrap; justify-content: flex-end; }
+
+    /* Admin pages */
+    .admin-content { padding: 12px !important; }
+    .admin-card { padding: 12px 14px; }
+    .admin-section-title { font-size: .95rem; }
+
+    /* Session start form */
+    .session-start-form .form-group { flex-direction: column !important; align-items: flex-start !important; }
+
+    /* Grille 2 colonnes → 1 colonne (modales, packs) */
+    .pack-modal [style*="grid-template-columns:1fr 1fr"] {
+        display: flex !important;
+        flex-direction: column;
+    }
+    .pack-modal { width: 95vw; padding: 14px 12px; }
+
+    /* Galerie photos → 2 colonnes max */
+    .photo-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+    /* Login */
+    .login-card { padding: 20px 14px; margin: 16px; }
+
+    /* Formulaires */
+    .d-flex.gap-2 { flex-direction: column; }
+    .d-flex.gap-2 > * { width: 100%; }
+    .d-flex.gap-2 > .btn { width: auto; }
 }
 

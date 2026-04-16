@@ -8,12 +8,12 @@
   <!-- En-tête : marque, horloge fictive, badge de rôle, déconnexion -->
   <header class="app-header">
     <span class="brand">Community</span>
+    <span class="badge badge-officiel">Officiel</span>
     <div class="fictive-clock">
       <span class="clock-label">Heure</span>
       <span id="clock">{{ fictive_time }}</span>
     </div>
     <div class="header-actions">
-      <span class="badge badge-officiel">Officiel</span>
       <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">Quitter</a>
     </div>
   </header>
