@@ -162,6 +162,8 @@ https://<ip-du-pi>:5443
 - Modifier les **codes d'accès** si nécessaire.
 
 **4. Démarrer la session** en cliquant sur "Configurer et démarrer" dans le tableau de bord.
+- Sélectionner un **pack de noms** à associer à la session (ou aucun pour un usage anonyme).
+- Les noms du pack seront accessibles aux participants dans un sélecteur sur leur interface.
 
 **5. Distribuer les codes** aux participants :
 - Groupe Cellule de crise → code officiel
@@ -256,7 +258,7 @@ Une fois l'avertissement accepté, les participants arrivent sur la page de conn
 | Composant | Technologie | Rôle |
 |-----------|-------------|------|
 | Serveur web | Flask 3.x + Waitress | Serveur WSGI, factory pattern `create_app` |
-| Base de données | SQLite + Flask-SQLAlchemy | Persistance des messages, sessions, photos |
+| Base de données | SQLite + Flask-SQLAlchemy | Persistance des messages, sessions, photos, packs de noms |
 | Sécurité | Flask-WTF (CSRF) + Flask-Bcrypt | Protection formulaires, hash mot de passe admin |
 | Frontend | HTMX + HTML5/CSS3 + Jinja2 | Polling temps réel, rendu serveur |
 | TLS | OpenSSL (certificat auto-signé) | Chiffrement HTTPS sur réseau local |
@@ -328,9 +330,9 @@ community/
 │   ├── models.py              # Modèles SQLAlchemy : Session, Message, Comment, Photo, Config, NamePack, NameEntry
 │   ├── routes/
 │   │   ├── auth.py            # /login, /logout
-│   │   ├── admin.py           # /admin/* (session, photothèque, codes d'accès)
-│   │   ├── officiel.py        # /officiel (feed + rédaction + programmation)
-│   │   ├── population.py      # /population (feed + rédaction)
+│   │   ├── admin.py           # /admin/* (session, photothèque, codes d'accès, packs de noms)
+│   │   ├── officiel.py        # /officiel (feed + rédaction + programmation + sender_name)
+│   │   ├── population.py      # /population (feed + rédaction + sender_name)
 │   │   └── htmx.py            # /htmx/* (fragments polling HTMX + commentaires)
 │   ├── templates/
 │   │   ├── base.html          # Layout commun (horloge fictive, nav)

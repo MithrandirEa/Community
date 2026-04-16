@@ -19,7 +19,7 @@ jobs:
           python-version: "3.11"
 
       - name: Installer les dépendances
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt pytest
 
       - name: Lancer les tests
         run: python -m pytest tests/ -x -q
