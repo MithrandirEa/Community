@@ -22,6 +22,7 @@
 7. [Connexion des tablettes](#7-connexion-des-tablettes)
 8. [Architecture technique](#8-architecture-technique)
 9. [Structure des fichiers](#9-structure-des-fichiers)
+10. [Nouveautés — v1.0.0](#10-nouveautés--v100)
 
 ---
 
@@ -38,15 +39,17 @@ Deux groupes de participants jouent des rôles complémentaires durant l'atelier
 | **Cellule de crise** | Élus, services municipaux | `/officiel` |
 | **Population** | Citoyens, riverains | `/population` |
 
-- La **Cellule de crise** publie des communiqués officiels, peut joindre des photos et programmer des messages à diffuser à une heure fictive précise.
-- La **Population** réagit librement à ces annonces via des commentaires ou ses propres messages.
+- La **Cellule de crise** publie des communiqués officiels, peut joindre des photos, programmer des messages à diffuser à une heure fictive précise et choisir un **nom de personnage fictif** au moment de la rédaction.
+- La **Population** réagit librement à ces annonces via des commentaires ou ses propres messages, également sous un **nom fictif**.
 - Les deux groupes voient les publications de l'autre en temps réel (actualisation automatique toutes les 2 secondes).
-- L'**animateur** pilote entièrement la session depuis l'interface d'administration.
+- L'**animateur** pilote entièrement la session depuis l'interface d'administration, y compris la gestion des **packs de noms fictifs**.
 
 ### Particularités
 
 - **Horloge fictive** : l'heure affichée dans l'application est indépendante de l'heure réelle — l'animateur configure l'heure de début du scénario.
 - **Photothèque persistante** : les photos chargées dans l'application survivent aux réinitialisations de session et sont organisées par scénario.
+- **Personnages fictifs** : l'animateur crée des packs de noms fictifs (un par rôle) ; les participants choisissent leur identité au moment de la rédaction.
+- **Messages programmés visibles** : la Cellule de crise voit ses messages en attente de diffusion directement dans son fil, grisés avec l'heure prévue.
 - **Aucun internet requis** : tout fonctionne en réseau local Wi-Fi.
 
 ---
@@ -155,6 +158,7 @@ https://<ip-du-pi>:5443
 - Choisir ou créer un **dossier de scénario** pour la photothèque.
 - Définir l'**heure fictive de début** (ex. `08:30` si le scénario commence à 8h30 du matin fictif).
 - Charger les **photos du scénario** dans la photothèque.
+- Sélectionner un **pack de noms fictifs** à associer à la session (optionnel — voir ci-dessous).
 - Modifier les **codes d'accès** si nécessaire.
 
 **4. Démarrer la session** en cliquant sur "Configurer et démarrer" dans le tableau de bord.
@@ -169,19 +173,33 @@ https://<ip-du-pi>:5443
 
 **Interface Cellule de crise** (`/officiel`) :
 - Rédiger et publier des communiqués (texte libre).
+- Choisir un **nom de personnage fictif** parmi les noms du pack actif (si un pack est configuré).
 - Joindre une photo de la photothèque.
-- **Programmer** un message à diffuser à une heure fictive précise (ex. un message qui apparaîtra "dans 10 minutes" d'après l'horloge fictive).
+- **Programmer** un message à diffuser à une heure fictive précise via le sélecteur heure/minute (ex. un message qui apparaîtra "dans 10 minutes" d'après l'horloge fictive).
+- Visualiser les **messages en attente** directement dans le fil (fond grisé, bandeau horaire), qui disparaissent automatiquement à l'heure prévue.
 - Répondre aux messages de la population.
 
 **Interface Population** (`/population`) :
 - Lire les communiqués officiels.
-- Publier des réactions et témoignages.
+- Publier des réactions et témoignages, sous un **nom de personnage fictif** si un pack est actif.
 - Commenter les messages de la cellule de crise.
 
 **Réinitialiser la session** (entre deux ateliers) :
 - Depuis `/admin` → bouton "Réinitialiser la session".
 - Tous les messages et commentaires sont effacés.
 - **La photothèque est conservée** intacte.
+
+---
+
+### Gérer les packs de noms fictifs
+
+Depuis `/admin` → bouton **"Noms"** dans le tableau de bord :
+
+1. **Créer un pack** en lui donnant un nom (ex. "Scénario Inondation").
+2. **Ajouter des noms** au pack en précisant le rôle : `officiel` (Cellule de crise) ou `population` (Citoyens).
+3. **Sélectionner le pack** lors de la configuration de la session (champ "Pack de noms" dans le formulaire de démarrage).
+
+Quand un pack est actif, un sélecteur apparaît automatiquement dans la zone de rédaction des participants. Si aucun pack n'est sélectionné, les participants publient sous leur rôle générique.
 
 ---
 
@@ -267,6 +285,7 @@ Tablette participant
   │  │ SQLAlchemy ORM              │    │
   │  │  Session / Message /        │    │
   │  │  Comment / Photo / Config   │    │
+  │  │  NamePack / NameEntry       │    │
   │  └──────────┬──────────────────┘    │
   │             │                       │
   │  ┌──────────▼──────────────────┐    │
@@ -306,7 +325,7 @@ Aucune heure réelle n'est jamais affichée aux participants.
 community/
 ├── app/
 │   ├── __init__.py            # create_app() : extensions, blueprints, scheduler
-│   ├── models.py              # Modèles SQLAlchemy : Session, Message, Comment, Photo, Config
+│   ├── models.py              # Modèles SQLAlchemy : Session, Message, Comment, Photo, Config, NamePack, NameEntry
 │   ├── routes/
 │   │   ├── auth.py            # /login, /logout
 │   │   ├── admin.py           # /admin/* (session, photothèque, codes d'accès)
@@ -319,7 +338,8 @@ community/
 │   │   ├── admin/
 │   │   │   ├── dashboard.html # Tableau de bord animateur
 │   │   │   ├── photos.html    # Gestion de la photothèque
-│   │   │   └── config.html    # Configuration session et codes
+│   │   │   ├── config.html    # Configuration session et codes
+│   │   │   └── namepacks.html # Gestion des packs de noms fictifs
 │   │   ├── officiel/
 │   │   │   └── feed.html      # Interface Cellule de crise
 │   │   ├── population/
@@ -351,6 +371,47 @@ community/
 ├── setup.sh                   # Script d'installation Raspberry Pi
 └── requirements.txt           # Dépendances Python
 ```
+
+---
+
+## 10. Nouveautés — v1.0.0
+
+### 🎭 Sélecteur de personnage lors de la rédaction
+
+Les participants choisissent désormais un **nom fictif** dans un sélecteur déroulant qui apparaît à gauche de la zone de texte. Le nom sélectionné remplace le rôle générique ("Cellule de crise" / "Citoyen") dans le fil d'actualité.
+
+Ce sélecteur n'est visible que si un **pack de noms** est actif sur la session en cours.
+
+### 📋 Packs de noms fictifs (back-office)
+
+L'animateur peut créer et gérer des **packs de noms fictifs** depuis le tableau de bord (`/admin` → bouton **Noms**) :
+
+- Créer plusieurs packs (un par scénario par exemple).
+- Ajouter des noms en précisant le rôle cible (`officiel` ou `population`).
+- Sélectionner le pack à utiliser lors du démarrage de session.
+- Supprimer des noms ou des packs entiers.
+
+### ⏰ Sélecteur heure/minute pour la programmation
+
+Le champ de saisie de l'heure de programmation des messages est remplacé par **deux listes déroulantes** (heure / minute), pour une saisie plus rapide et moins sujette aux erreurs.
+
+### 👁️ Visibilité des messages programmés
+
+Les messages de la Cellule de crise en attente de publication apparaissent **en tête du fil officiel** avec un rendu visuel distinctif :
+- Fond grisé et bordure tiretée orange.
+- Bandeau "🕐 Envoi programmé à HH:MM".
+- Bouton "Répondre" masqué (le message n'est pas encore public).
+
+La Population ne voit **jamais** ces messages en attente. Au moment de la publication automatique, la carte grisée est remplacée par la carte publiée au prochain cycle de polling (2 secondes).
+
+---
+
+## Contact
+
+Pour toute question, suggestion ou signalement de problème :
+
+- 📧 **E-mail** : [c.cscipion.software@gmail.com](mailto:c.cscipion.software@gmail.com)
+- 🐛 **Issue GitHub** : [ouvrir une issue](https://github.com/MithrandirEa/Community/issues/new)
 
 ---
 
