@@ -406,6 +406,15 @@ La Population ne voit **jamais** ces messages en attente. Au moment de la public
 
 ---
 
+## Contact
+
+Pour toute question, suggestion ou signalement de problème :
+
+- 📧 **E-mail** : [c.cscipion.software@gmail.com](mailto:c.cscipion.software@gmail.com)
+- 🐛 **Issue GitHub** : [ouvrir une issue](https://github.com/MithrandirEa/Community/issues/new)
+
+---
+
 ## Licence
 
 MIT
