@@ -155,9 +155,12 @@ https://<ip-du-pi>:5443
 - Choisir ou créer un **dossier de scénario** pour la photothèque.
 - Définir l'**heure fictive de début** (ex. `08:30` si le scénario commence à 8h30 du matin fictif).
 - Charger les **photos du scénario** dans la photothèque.
+- (Optionnel) Gérer les **packs de noms fictifs** depuis `/admin/namepacks` : créer un pack et y ajouter des noms pour la Cellule de crise et la Population. Ces noms fictifs permettent aux participants d'envoyer des messages sous une identité de personnage.
 - Modifier les **codes d'accès** si nécessaire.
 
 **4. Démarrer la session** en cliquant sur "Configurer et démarrer" dans le tableau de bord.
+- Sélectionner un **pack de noms** à associer à la session (ou aucun pour un usage anonyme).
+- Les noms du pack seront accessibles aux participants dans un sélecteur sur leur interface.
 
 **5. Distribuer les codes** aux participants :
 - Groupe Cellule de crise → code officiel
@@ -171,11 +174,13 @@ https://<ip-du-pi>:5443
 - Rédiger et publier des communiqués (texte libre).
 - Joindre une photo de la photothèque.
 - **Programmer** un message à diffuser à une heure fictive précise (ex. un message qui apparaîtra "dans 10 minutes" d'après l'horloge fictive).
+- Signer le message avec un **nom fictif** issu du pack associé à la session.
 - Répondre aux messages de la population.
 
 **Interface Population** (`/population`) :
 - Lire les communiqués officiels.
 - Publier des réactions et témoignages.
+- Signer le message avec un **nom fictif** issu du pack associé à la session.
 - Commenter les messages de la cellule de crise.
 
 **Réinitialiser la session** (entre deux ateliers) :
@@ -238,7 +243,7 @@ Une fois l'avertissement accepté, les participants arrivent sur la page de conn
 | Composant | Technologie | Rôle |
 |-----------|-------------|------|
 | Serveur web | Flask 3.x + Waitress | Serveur WSGI, factory pattern `create_app` |
-| Base de données | SQLite + Flask-SQLAlchemy | Persistance des messages, sessions, photos |
+| Base de données | SQLite + Flask-SQLAlchemy | Persistance des messages, sessions, photos, packs de noms |
 | Sécurité | Flask-WTF (CSRF) + Flask-Bcrypt | Protection formulaires, hash mot de passe admin |
 | Frontend | HTMX + HTML5/CSS3 + Jinja2 | Polling temps réel, rendu serveur |
 | TLS | OpenSSL (certificat auto-signé) | Chiffrement HTTPS sur réseau local |
@@ -306,12 +311,12 @@ Aucune heure réelle n'est jamais affichée aux participants.
 community/
 ├── app/
 │   ├── __init__.py            # create_app() : extensions, blueprints, scheduler
-│   ├── models.py              # Modèles SQLAlchemy : Session, Message, Comment, Photo, Config
+│   ├── models.py              # Modèles SQLAlchemy : Session, Message, Comment, Photo, Config, NamePack, NameEntry
 │   ├── routes/
 │   │   ├── auth.py            # /login, /logout
-│   │   ├── admin.py           # /admin/* (session, photothèque, codes d'accès)
-│   │   ├── officiel.py        # /officiel (feed + rédaction + programmation)
-│   │   ├── population.py      # /population (feed + rédaction)
+│   │   ├── admin.py           # /admin/* (session, photothèque, codes d'accès, packs de noms)
+│   │   ├── officiel.py        # /officiel (feed + rédaction + programmation + sender_name)
+│   │   ├── population.py      # /population (feed + rédaction + sender_name)
 │   │   └── htmx.py            # /htmx/* (fragments polling HTMX + commentaires)
 │   ├── templates/
 │   │   ├── base.html          # Layout commun (horloge fictive, nav)
@@ -319,7 +324,8 @@ community/
 │   │   ├── admin/
 │   │   │   ├── dashboard.html # Tableau de bord animateur
 │   │   │   ├── photos.html    # Gestion de la photothèque
-│   │   │   └── config.html    # Configuration session et codes
+│   │   │   ├── config.html    # Configuration session et codes
+│   │   │   └── namepacks.html # Gestion des packs de noms fictifs
 │   │   ├── officiel/
 │   │   │   └── feed.html      # Interface Cellule de crise
 │   │   ├── population/
